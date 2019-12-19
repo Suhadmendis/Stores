@@ -1,0 +1,1111 @@
+<?php
+
+session_start();
+
+////////////////////////////////////////////// Database Connector /////////////////////////////////////////////////////////////
+require_once("config.inc.php");
+require_once("DBConnector.php");
+$db = new DBConnector();
+
+////////////////////////////////////////////// Write XML ////////////////////////////////////////////////////////////////////
+header('Content-Type: text/xml');
+
+date_default_timezone_set('Asia/Colombo');
+
+$stname = "";
+if (isset($_GET["stname"])) {
+    $stname = $_GET["stname"];
+}
+
+/////////////////////////////////////// GetValue //////////////////////////////////////////////////////////////////////////
+///////////////////////////////////// Registration /////////////////////////////////////////////////////////////////////////
+
+if ($_GET["Command"] == "add_address") {
+    //echo "Regt=".$Regt."RegimentNo=".RegimentNo."Command=".$Command;
+
+
+    /* 		$sql="Select * from tmp_army_no where edu= '".$_GET['edu']."'";
+      $result =$db->RunQuery($sql);
+      if($row = mysql_fetch_array($result)){
+      $ResponseXML .= "exist";
+
+
+
+      }	else { */
+
+    //	$ResponseXML .= "";
+    //$ResponseXML .= "<ArmyDetails>";
+
+    /* 	$sql1="Select * from mas_educational_qualifications where str_Educational_Qualification= '".$_GET['edu']."'";
+      $result1 =$db->RunQuery($sql1);
+      $row1 = mysql_fetch_array($result1);
+      $ResponseXML .=  $row1["int_Educational_Qulifications"]; */
+
+    $sqlt = "Select * from customer_mast where id ='" . $_GET['customerid'] . "'";
+
+    $resultt = $db->RunQuery($sqlt);
+    if ($rowt = mysql_fetch_array($resultt)) {
+        echo $rowt["str_address"];
+    }
+}
+
+
+if ($_GET["Command"] == "new_inv") {
+
+    $_SESSION["print"] = 0;
+
+    /* 	$sql="Select CAS_INV_NO_m from invpara";
+      $result =$db->RunQuery($sql);
+      $row = mysql_fetch_array($result);
+      $tmpinvno="000000".$row["CAS_INV_NO_m"];
+      $lenth=strlen($tmpinvno);
+      $invno="INV".substr($tmpinvno, $lenth-7);
+      echo $invno; */
+
+//    $sql = "Select ARN from invpara where COMCODE='" . $_SESSION['company'] . "'";
+    $sql = "Select ARN, vatrate, nbt from invpara";
+
+    $result = $db->RunQuery($sql);
+    $row = mysql_fetch_array($result);
+    $tmpinvno = "000000" . $row["ARN"];
+    $lenth = strlen($tmpinvno);
+    $invno = $_SESSION['company'] . trim("1GA") . substr($tmpinvno, $lenth - 8);
+    $_SESSION["invno"] = $invno;
+    
+    $vat = $row["vatrate"];
+    $nbt = $row["nbt"];
+
+    $sql = "Select ARN from tmpinvpara";
+    $result = $db->RunQuery($sql);
+    $row = mysql_fetch_array($result);
+    $_SESSION["tmp_no_arn"] = "1GA" . $row["ARN"];
+
+
+
+    $sql1 = "delete from tmp_purord_data where tmp_no='" . $_SESSION["tmp_no_arn"] . "'";
+    $result1 = $db->RunQuery($sql1);
+
+    $sql1 = "update tmpinvpara set ARN=ARN+1";
+    $result1 = $db->RunQuery($sql1);
+
+//    echo $invno;
+    
+    echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+        
+    $ResponseXML .= "";
+    $ResponseXML .= "<salesdetails>";
+    
+    $ResponseXML .= "<REFNO><![CDATA[" . $invno . "]]></REFNO>";
+    $ResponseXML .= "<vatrate><![CDATA[" . $vat . "]]></vatrate>";
+    $ResponseXML .= "<nbt><![CDATA[" . $nbt . "]]></nbt>";
+    $ResponseXML .= " </salesdetails>";
+    echo $ResponseXML;
+}
+
+
+if ($_GET["Command"] == "add_tmp") {
+
+    $department = $_GET["department"];
+
+    $ResponseXML .= "";
+    $ResponseXML .= "<salesdetails>";
+
+
+    $sql = "delete from tmp_purord_data where str_code='" . $_GET['itemcode'] . "' and str_invno='" . $_GET['invno'] . "' ";
+    //$ResponseXML .= $sql;
+    $result = $db->RunQuery($sql);
+
+    //echo $_GET['rate'];
+    //echo $_GET['qty'];
+
+    $qty = str_replace(",", "", $_GET["qty"]);
+
+
+    $sql = "Insert into tmp_purord_data (str_invno, str_code, str_description, partno, qty)values 
+			('" . $_GET['invno'] . "', '" . $_GET['itemcode'] . "', '" . $_GET['item'] . "', '" . $_GET["partno"] . "', " . $qty . ") ";
+    //$ResponseXML .= $sql;
+    $result = $db->RunQuery($sql);
+
+
+    $ResponseXML .= "<sales_table><![CDATA[ <table><tr>
+                              <td width=\"100\"  background=\"\" ><font color=\"#FFFFFF\">Code</font></td>
+                              <td width=\"300\"  background=\"\"><font color=\"#FFFFFF\">Description</font></td>
+                              <td width=\"100\"  background=\"\"><font color=\"#FFFFFF\">Part No</font></td>
+                              <td width=\"100\"  background=\"\"><font color=\"#FFFFFF\">Qty</font></td>
+                             
+                            </tr>";
+
+
+    $sql = "Select * from tmp_purord_data where str_invno='" . $_GET['invno'] . "'";
+    $result = $db->RunQuery($sql);
+    while ($row = mysql_fetch_array($result)) {
+        $ResponseXML .= "<tr>                              
+                             <td  >" . $row['str_code'] . "</a></td>
+							 <td  >" . $row['str_description'] . "</a></td>
+							 <td  >" . $row['partno'] . "</a></td>
+							 <td  >" . number_format($row['qty'], 2, ".", ",") . "</a></td>
+							 <td  ><img src=\"images/delete_01.png\" width=\"20\" height=\"20\" id=" . $row['str_code'] . "  name=" . $row['str_code'] . " onClick=\"del_item('" . $row['str_code'] . "');\"></td></tr>";
+    }
+
+    $ResponseXML .= "   </table>]]></sales_table>";
+
+    $ResponseXML .= " </salesdetails>";
+
+    //	}	
+
+
+    echo $ResponseXML;
+}
+
+
+if ($_GET["Command"] == "arn") {
+
+    //$department=$_GET["department"];
+	
+	echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+        
+    $ResponseXML .= "";
+    $ResponseXML .= "<salesdetails>";
+
+
+    $sql = "select * from s_purmas_tmp where REFNO='" . $_GET['invno'] . "' ";
+    //$ResponseXML .= $sql;
+    $result = $db->RunQuery($sql);
+    if ($row = mysql_fetch_array($result)) {
+        $ResponseXML .= "<REFNO><![CDATA[" . $row['REFNO'] . "]]></REFNO>";
+        $ResponseXML .= "<SDATE><![CDATA[" . $row['SDATE'] . "]]></SDATE>";
+        $ResponseXML .= "<SUP_CODE><![CDATA[" . $row['SUP_CODE'] . "]]></SUP_CODE>";
+        $ResponseXML .= "<SUP_NAME><![CDATA[" . $row['SUP_NAME'] . "]]></SUP_NAME>";
+        $ResponseXML .= "<REMARK><![CDATA[" . $row['REMARK'] . "]]></REMARK>";
+        $ResponseXML .= "<DEP_CODE><![CDATA[" . $row['DEP_CODE'] . "]]></DEP_CODE>";
+        $ResponseXML .= "<DEP_NAME><![CDATA[" . $row['DEP_NAME'] . "]]></DEP_NAME>";
+        $ResponseXML .= "<REP_CODE><![CDATA[" . $row['REP_CODE'] . "]]></REP_CODE>";
+        $ResponseXML .= "<REP_NAME><![CDATA[" . $row['REP_NAME'] . "]]></REP_NAME>";
+        $ResponseXML .= "<S_date><![CDATA[" . $row['S_date'] . "]]></S_date>";
+        $ResponseXML .= "<LC_No><![CDATA[" . $row['LC_No'] . "]]></LC_No>";
+        $ResponseXML .= "<pi_no><![CDATA[" . $row['pi_no'] . "]]></pi_no>";
+        $ResponseXML .= "<Brand><![CDATA[" . $row['Brand'] . "]]></Brand>";
+        $ResponseXML .= "<COUNTRY><![CDATA[" . $row["COUNTRY"] . "]]></COUNTRY>";
+        $ResponseXML .= "<type><![CDATA[".$row['TYPE']."]]></type>";
+        $ResponseXML .= "<purType><![CDATA[".$row['type1']."]]></purType>";
+    }
+    $link = $row['ORDNO'];
+    $type1 = $row['type1'];
+    //	$sql="delete from tmp_purord_data where str_invno='".$_GET['invno']."' ";
+    //$ResponseXML .= $sql;
+    //	$result =$db->RunQuery($sql);
+    //	$sql="select * from s_ordtrn where REFNO='".$_GET['invno']."' ";
+    //$ResponseXML .= $sql;
+    //	$result =$db->RunQuery($sql);
+    //	while($row = mysql_fetch_array($result)){
+    //		$sql1="Insert into tmp_purord_data (str_invno, str_code, str_description, partno, qty)values 
+    //		('".$row['REFNO']."', '".$row['STK_NO']."', '".$row['DESCRIPT']."', '".$row["partno"]."', ".$row["ORD_QTY"].") ";
+    //$ResponseXML .= $sql;
+    //		$result1 =$db->RunQuery($sql1);	
+    //	}
+
+    $account = "";
+    $accDetails = "";
+    if($type1 != "ST"){
+        $account = "<td width=\"800\"  background=\"\"><font color=\"#FFFFFF\">Account Name</font></td><td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Account Code</font></td><td width=\"200\"  background=\"\"><font color=\"#FFFFFF\"></font></td>";
+    }
+
+
+
+    $ResponseXML .= "<sales_table><![CDATA[ <table><tr>
+                              <td width=\"200\"  background=\"\" ><font color=\"#FFFFFF\">Code</font></td>
+                              <td width=\"800\"  background=\"\"><font color=\"#FFFFFF\">Description</font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Ordered Qty</font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\"></font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Received Qty</font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\"></font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Cost</font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Discount</font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Tax</font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Inv#</font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">InvDate</font></td>
+                              <td width=\"800\"  background=\"\"><font color=\"#FFFFFF\">Remark</font></td>
+                              $account
+                              <td width=\"15\"  background=\"\"><font color=\"#FFFFFF\"></font></td>
+                              <td width=\"15\"  background=\"\"><font color=\"#FFFFFF\"></font></td>
+                              <td width=\"15\"  background=\"\"><font color=\"#FFFFFF\"></font></td>
+                              <td width=\"15\"  background=\"\"><font color=\"#FFFFFF\"></font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Sub Total</font></td>
+							
+                            </tr>";
+
+    $mcou = 0;
+    $sql = "Select count(*) as mcou from s_purtrn_tmp where REFNO='" . $_GET['invno'] . "'";
+    $result = $db->RunQuery($sql);
+    $row = mysql_fetch_array($result);
+    $mcou = $row["mcou"] + 1;
+    
+    $i = 1;
+    $total = 0;
+    $sql = "Select * from s_purtrn_tmp where REFNO='" . $_GET['invno'] . "'";
+    $result = $db->RunQuery($sql);
+//    echo $sql;
+    while ($row = mysql_fetch_array($result)) {
+        
+        $itemcode = "itemcode" . $i;
+        $itemname = "itemname" . $i;
+        
+        $remarkname = "remarkname" . $i;
+        $invname = "invname" . $i;
+        $invdatename = "invdatename" . $i;
+        
+        $acc_name = "acc_name" . $i;
+        $accno = "accno" . $i;
+        $ord_qty = "ord_qty" . $i;
+        $fob = "fob" . $i;
+        $qty = "qty" . $i;
+		$discount_a = "discount_a" . $i;
+		$discount_b = "discount_b" . $i;
+        $cost = "cost" . $i;
+        $selling = "selling" . $i;
+        $taxNum = "taxNum" . $i;
+        $accNum = "acc" . $i;
+        $margin = "margin" . $i;
+        $nbt = "nbt" . $i;
+        $vat = "vat" . $i;
+		
+        $subtotal = "subtotal" . $i;
+
+        $sql_selling = "select * from s_rawmas where STK_NO='" . $row['STK_NO'] . "'";
+        $result_selling = $db->RunQuery($sql_selling);
+        $row_selling = mysql_fetch_array($result_selling);
+        
+//        $sql = "select ORDNO from s_purmas_tmp  where REFNO='" . $link. "'";
+//        $result = $db->RunQuery($sql);
+//        $row_purmas_tmp = mysql_fetch_array($result);
+        
+        $sqlTax = "select tax from s_ordtrn  where REFNO='" . $link . "' and STK_NO ='".$row['STK_NO']."'";
+        $resultTax = $db->RunQuery($sqlTax);
+        $row_tax = mysql_fetch_array($resultTax);
+        
+        $option = "";
+        if($row_tax["tax"] == "0"){
+            $option = "<option value=\"0\" selected=\"selected\">NonVat</option>";
+        }else if($row_tax["tax"] == "1"){
+            $option = "<option value=\"1\" selected=\"selected\">Vat</option>";
+        }else if($row_tax["tax"] == "2"){
+            $option = "<option value=\"2\" selected=\"selected\">Svat</option>";
+        }else if($row_tax["tax"] == "3"){
+            $option = "<option value=\"3\" selected=\"selected\">VatNbt</option>";
+        }else if($row_tax["tax"] == "4"){
+            $option = "<option value=\"4\" selected=\"selected\">SvatNbt</option>";
+        }else if($row_tax["tax"] == "5"){
+            $option = "<option value=\"5\" selected=\"selected\">NbtOnly</option>";
+        }
+        if($type1 != "ST"){
+            $accDetails = "<td ><input type=\"text\" size=\"15\" name=" . $acc_name . " id=" . $acc_name . "  value='' class=\"text_purchase3\" disabled=\"disabled\"/></td><td><input type=\"text\" size=\"15\" name=" . $accno . " id=" . $accno . "  value='' class=\"text_purchase3\" disabled=\"disabled\"/></td><td><a href=\"search_ledger_acc.php?stname=cash_rec2_grid&gridNo=$i\" onclick=\"NewWindow(this.href,'mywin','800','700','yes','center');return false\" onfocus=\"this.blur()\">
+      <input type=\"button\" name=\"additem_tmp3\" id=\"additem_tmp3\" value=\"...\" class=\"btn_purchase1\" />
+    </a></td>";
+    }else{
+        $accDetails = "";
+    }
+        
+        $descr= trim($row_selling['PART_NO'])  . " " . trim($row_selling['DESCRIPT'])  . " " . trim($row_selling['SUBSTITUTE']) .  " " . trim($row_selling['jobno']);
+        $ResponseXML .= "<tr>                              
+                             <td ><input type=\"text\" size=\"15\" name=" . $itemcode . " id=" . $itemcode . "   value=" . $row['STK_NO'] . " class=\"text_purchase3\" disabled=\"disabled\"/></td>
+							<td ><input type=\"text\" size=\"15\" name=" . $itemname . " id=" . $itemname . "  value='" . $descr . "' class=\"text_purchase3\" disabled=\"disabled\"/></td>
+
+							<td ><input type=\"text\" size=\"15\" name=" . $ord_qty . " id=" . $ord_qty . "  value='" . $row['O_QTY'] . "' class=\"text_purchase3\" disabled=\"disabled\"/></td>
+							
+							<td ><input type=\"hidden\" size=\"15\" name=" . $fob . " id=" . $fob . "  class=\"text_purchase3\"/></td>
+							<td ><input type=\"text\" size=\"15\" name=" . $qty . " id=" . $qty . " value=" . $row['REC_QTY'] . " class=\"text_purchase3\" onkeyup=\"cal_subtot('" . $i . "', '" . $mcou . "');\" disabled=\"disabled\"/></td>
+							<td ><input type=\"hidden\" size=\"15\" name=" . $discount_b . " id=" . $discount_b . " value='0' class=\"text_purchase3\" onkeyup=\"cal_disc('" . $i . "', '" . $mcou . "');\"/></td>
+							<td ><input type=\"text\" size=\"15\" name=" . $cost . " id=" . $cost . " value=" . $row['COST'] . " class=\"text_purchase3\" onkeyup=\"cal_subtot('" . $i . "', '" . $mcou . "');\" disabled=\"disabled\"/></td>
+							<td ><input type=\"text\" size=\"15\" name=" . $discount_a . " id=" . $discount_a . " value='0' class=\"text_purchase3\" onkeyup=\"cal_disc('" . $i . "', '" . $mcou . "');\"/></td>                                                         
+                                                        <td ><select size=\"5\" class=\"text_purchase3\" name=" . $taxNum . " id=" . $taxNum . " onchange=\"cal_subtot('" . $i . "', '" . $mcou . "');\">
+                                                             $option
+                                                        </select></td>
+                                                        <td ><input type=\"text\" size=\"15\" name=" . $invname . " id=" . $invname . "  value='' class=\"text_purchase3\" /></td>
+                                                        <td ><input type=\"text\" size=\"15\" name=" . $invdatename . " id=" . $invdatename . "  value='' class=\"text_purchase3\" /></td>
+                                                        <td ><input type=\"text\" size=\"15\" name=" . $remarkname . " id=" . $remarkname . "  value='' class=\"text_purchase3\" /></td>
+                                                        $accDetails
+							 <td ><input type=\"hidden\" size=\"15\" name=" . $selling . " id=" . $selling . " class=\"text_purchase3\" onkeyup=\"cal_margine('" . $i . "', '" . $mcou . "');\" value=" . $row_selling['SELLING'] . "  ></td>
+							 <td ><input type=\"hidden\" size=\"15\" name=" . $margin . " id=" . $margin . "  class=\"text_purchase3\" disabled=\"disabled\"/></td>
+							 <td ><input type=\"hidden\" size=\"15\" name=" . $nbt . " id=" . $nbt . " class=\"text_purchase3\"  disabled=\"disabled\" /></td>
+							 <td ><input type=\"hidden\" size=\"15\" name=" . $vat . " id=" . $vat . "  class=\"text_purchase3\" disabled=\"disabled\"/></td>
+							 
+							 <td ><input type=\"text\" size=\"15\" name=" . $subtotal . " id=" . $subtotal . " value='' class=\"text_purchase3\" disabled=\"disabled\"/></td>
+							</tr>"; //subtotal blank, org = trim($row['COST']*$row['REC_QTY'])
+        $i = $i + 1;
+        $total += $row['COST']*$row['REC_QTY'];
+    }
+    $total = "";
+    $ResponseXML .= "   </table>]]></sales_table>";
+    $ResponseXML .= "<count><![CDATA[" . $i . "]]></count>";
+    $ResponseXML .= "<total><![CDATA[" . $total . "]]></total>";
+    $ResponseXML .= "<stname><![CDATA[" . $stname . "]]></stname>";
+    $ResponseXML .= " </salesdetails>";
+
+    //	}	
+
+
+    echo $ResponseXML;
+}
+
+
+if ($_GET["Command"] == "setord") {
+
+    include_once("connection.php");
+
+    $len = strlen($_GET["salesord1"]);
+    $need = substr($_GET["salesord1"], $len - 7, $len);
+    $salesord1 = trim("ORD/ ") . $_GET["salesrep"] . trim(" / ") . $need;
+
+
+    $_SESSION["custno"] = $_GET['custno'];
+    $_SESSION["brand"] = $_GET["brand"];
+    $_SESSION["department"] = $_GET["department"];
+
+
+
+    header('Content-Type: text/xml');
+    echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+
+    $ResponseXML = "";
+    $ResponseXML .= "<salesdetails>";
+
+    $cuscode = $_GET["custno"];
+    $salesrep = $_GET["salesrep"];
+    $brand = $_GET["brand"];
+
+    //		$ResponseXML .= "<salesord><![CDATA[".$salesord1."]]></salesord>";
+    //Call SETLIMIT ====================================================================
+
+
+
+    /* 	$sql = mysql_query("DROP VIEW view_s_salma") or die(mysql_error());
+      $sql = mysql_query("CREATE VIEW view_s_salma
+      AS
+      SELECT     s_salma.*, brand_mas.class AS class
+      FROM         brand_mas RIGHT OUTER JOIN
+      s_salma ON brand_mas.barnd_name = s_salma.brand") or die(mysql_error()); */
+
+    $OutpDAMT = 0;
+    $OutREtAmt = 0;
+    $OutInvAmt = 0;
+    $InvClass = "";
+
+    $sqlclass = mysql_query("select class from brand_mas where barnd_name='" . trim($brand) . "'") or die(mysql_error());
+    if ($rowclass = mysql_fetch_array($sqlclass)) {
+        if (is_null($rowclass["class"]) == false) {
+            $InvClass = $rowclass["class"];
+        }
+    }
+
+    $sqloutinv = mysql_query("select sum(GRAND_TOT-TOTPAY) as totout from view_s_salma where GRAND_TOT>TOTPAY and CANCELL='0' and C_CODE='" . trim($cuscode) . "' and SAL_EX='" . trim($salesrep) . "' and class='" . $InvClass . "'") or die(mysql_error());
+    if ($rowoutinv = mysql_fetch_array($sqloutinv)) {
+        if (is_null($rowoutinv["totout"]) == false) {
+            $OutInvAmt = $rowoutinv["totout"];
+        }
+    }
+
+    $sqlinvcheq = mysql_query("SELECT * FROM s_invcheq WHERE che_date>'" . date("d-m-Y") . "' AND cus_code='" . trim($cuscode) . "' and trn_type='REC' and sal_ex='" . trim($salesrep) . "'") or die(mysql_error());
+    while ($rowinvcheq = mysql_fetch_array($sqlinvcheq)) {
+
+        $sqlsttr = mysql_query("select * from s_sttr where ST_REFNO='" . trim($rowinvcheq["refno"]) . "' and ST_CHNO ='" . trim($rowinvcheq["cheque_no"]) . "'") or die(mysql_error());
+        while ($rowsttr = mysql_fetch_array($sqlsttr)) {
+            $sqlview_s_salma = mysql_query("select class from view_s_salma where REF_NO='" . trim($rowsttr["ST_INVONO"]) . "'") or die(mysql_error());
+            if ($rowview_s_salma = mysql_fetch_array($sqlview_s_salma)) {
+
+                if (trim($rowview_s_salma["class"]) == $InvClass) {
+                    $OutpDAMT = $OutpDAMT + $rowsttr["ST_PAID"];
+                }
+            }
+        }
+    }
+
+
+
+    $pend_ret_set = 0;
+
+    $sqlinvcheq = mysql_query("SELECT sum(che_amount) as  che_amount FROM s_invcheq WHERE che_date >'" . date("d-m-Y") . "' AND cus_code='" . trim($cuscode) . "' and trn_type='RET'") or die(mysql_error());
+    if ($rowinvcheq = mysql_fetch_array($sqlinvcheq)) {
+        if (is_null($rowinvcheq["che_amount"]) == false) {
+            $pend_ret_set = $rowinvcheq["che_amount"];
+        }
+    }
+
+
+    $sqlcheq = mysql_query("Select sum(CR_CHEVAL-PAID) as tot from s_cheq where CR_C_CODE='" . trim($cuscode) . "'  and CR_CHEVAL-PAID>0 and CR_FLAG='0' and S_REF='" . trim($salesrep) . "'") or die(mysql_error());
+    if ($rowcheq = mysql_fetch_array($sqlcheq)) {
+        if (is_null($rowcheq["tot"]) == false) {
+            $OutREtAmt = $rowcheq["tot"];
+        } else {
+            $OutREtAmt = 0;
+        }
+    }
+
+
+
+    $ResponseXML .= "<sales_table_acc><![CDATA[ <table  bgcolor=\"#0000FF\" border=1  cellspacing=0>
+						<tr><td>Outstanding Invoice Amount</td><td>" . number_format($OutInvAmt, 2, ".", ",") . "</td></tr>
+						 <td>Return Cheque Amount</td><td>" . number_format($OutREtAmt, 2, ".", ",") . "</td></tr>
+						 <td>Pending Cheque Amount</td><td>" . number_format($OutpDAMT, 2, ".", ",") . "</td></tr>
+						 <td>PSD Cheque Settlments</td><td>" . number_format($pend_ret_set, 2, ".", ",") . "</td></tr>
+						 <td>Total</td><td>" . number_format($OutInvAmt + $OutREtAmt + $OutpDAMT + $pend_ret_set, 2, ".", ",") . "</td></tr>
+						 </table></table>]]></sales_table_acc>";
+
+
+    $sqlbr_trn = mysql_query("select * from br_trn where Rep='" . trim($salesrep) . "' and brand='" . trim($InvClass) . "' and cus_code='" . trim($cuscode) . "'") or die(mysql_error());
+    if ($rowbr_trn = mysql_fetch_array($sqlbr_trn)) {
+        if (is_null($rowbr_trn["credit_lim"]) == false) {
+            $crLmt = $rowbr_trn["credit_lim"];
+        } else {
+            $crLmt = 0;
+        }
+
+
+        if (is_null($rowbr_trn["tmpLmt"]) == false) {
+            $tmpLmt = $rowbr_trn["tmpLmt"];
+        } else {
+            $tmpLmt = 0;
+        }
+
+        if (is_null($rowbr_trn["CAT"]) == false) {
+            $cuscat = trim($rowbr_trn["cat"]);
+            if ($cuscat = "A") {
+                $m = 2.5;
+            }
+            if ($cuscat = "B") {
+                $m = 2.5;
+            }
+            if ($cuscat = "C") {
+                $m = 1;
+            }
+            $txt_crelimi = "0";
+            $txt_crebal = "0";
+            $txt_crelimi = number_format($crLmt, 2, ".", ",");
+            $crebal = $crLmt * $m + $tmpLmt - $OutInvAmt - $OutREtAmt - $OutpDAMT - $pend_ret_set;
+            $txt_crebal = number_format($crebal, "2", ".", ",");
+        } else {
+            $txt_crelimi = "0";
+            $txt_crebal = "0";
+        }
+        $creditbalance = $OutInvAmt + $OutREtAmt + $OutpDAMT;
+    }
+    $ResponseXML .= "<txt_crelimi><![CDATA[" . $txt_crelimi . "]]></txt_crelimi>";
+    $ResponseXML .= "<txt_crebal><![CDATA[" . $txt_crebal . "]]></txt_crebal>";
+
+    $ResponseXML .= "<creditbalance><![CDATA[" . $creditbalance . "]]></creditbalance>";
+
+
+    $ResponseXML .= "</salesdetails>";
+    echo $ResponseXML;
+}
+
+
+if ($_GET["Command"] == "del_item") {
+
+
+    $ResponseXML .= "";
+    $ResponseXML .= "<salesdetails>";
+
+
+    $sql = "delete from tmp_purord_data where str_code='" . $_GET['code'] . "' and str_invno='" . $_GET['invno'] . "' ";
+
+    $result = $db->RunQuery($sql);
+
+    $ResponseXML .= "<sales_table><![CDATA[ <table><tr>
+                              <td width=\"100\"  background=\"\" ><font color=\"#FFFFFF\">Code</font></td>
+                              <td width=\"300\"  background=\"\"><font color=\"#FFFFFF\">Description</font></td>
+                              <td width=\"100\"  background=\"\"><font color=\"#FFFFFF\">Part No</font></td>
+                              <td width=\"100\"  background=\"\"><font color=\"#FFFFFF\">Qty</font></td>
+                            </tr>";
+
+
+    $sql = "Select * from tmp_purord_data where str_invno='" . $_GET['invno'] . "'";
+    $result = $db->RunQuery($sql);
+    while ($row = mysql_fetch_array($result)) {
+        $ResponseXML .= "<tr>
+                              
+                             <td  >" . $row['str_code'] . "</a></td>
+							 <td  >" . $row['str_description'] . "</a></td>
+							 <td  >" . $row['partno'] . "</a></td>
+							 <td  >" . $row['qty'] . "</a></td>
+							 <td  ><img src=\"images/delete_01.png\" width=\"20\" height=\"20\" id=" . $row['str_code'] . "  name=" . $row['str_code'] . " onClick=\"del_item('" . $row['str_code'] . "');\"></td></tr>";
+    }
+
+    $ResponseXML .= "   </table>]]></sales_table>";
+
+    $ResponseXML .= " </salesdetails>";
+
+
+    //	}	
+
+
+    echo $ResponseXML;
+}
+
+
+
+if ($_POST["Command"] == "save_item") {
+    require_once './gl_posting.php';
+    if ($_SESSION['dev'] == "") {
+        exit("logout");
+    }
+	
+	include('connection.php');
+	
+	$sql_status=0;
+			
+	mysql_query("SET AUTOCOMMIT=0", $dbinv);
+	mysql_query("START TRANSACTION", $dbinv);
+        
+			
+	$supplier_name=str_replace("~", "&", $_POST["supplier_name"]);
+	
+    if ($_POST["count"] > 0) {
+
+//        $sql_invpara = "SELECT * from invpara where COMCODE='" . $_SESSION['company'] . "'";
+        $sql_invpara = "SELECT * from invpara";
+		$result_invpara=mysql_query($sql_invpara, $dbinv);
+        $row_invpara = mysql_fetch_array($result_invpara);
+
+        $vatrate = $row_invpara["vatrate"];
+
+        $ResponseXML .= "";
+        $ResponseXML .= "<salesdetails>";
+
+        $_SESSION["CURRENT_DOC"] = 1;      //document ID
+        $_SESSION["VIEW_DOC"] = false;     //view current document
+        $_SESSION["FEED_DOC"] = true;       //save  current document
+        $_POST["MOD_DOC"] = false;         //delete   current document
+        $_POST["PRINT_DOC"] = false;       //get additional print   of  current document
+        $_POST["PRICE_EDIT"] = false;       //edit selling price
+        $_POST["CHECK_USER"] = false;       //check user permission again
+        //$cre_balance=str_replace(",", "", $_GET["balance"]);
+
+        $sql = "select TYPE, type1 from s_purmas_tmp where REFNO = '".$_POST["orderno1"]."'";
+        $result=mysql_query($sql, $dbinv);
+        $rowOrd= mysql_fetch_array($result);
+        $refNo = $rowOrd["type1"]."/".$rowOrd["TYPE"]."/".$_POST["invno"];
+
+        $sql = "select * from s_purmas where REFNO='" . $refNo . "'";
+		$result=mysql_query($sql, $dbinv);
+      
+        //echo $sql;
+        if ($row = mysql_fetch_array($result)) {
+            exit("AR Number Already Exists");
+        } else {
+            
+            $sql = "select vatrate,nbt from invpara";
+            $result=mysql_query($sql, $dbinv);
+            $row = mysql_fetch_array($result);                        
+
+            $mtot = $_POST["total_value"];
+            $mtot1 = 0; //vat value
+            $nbt = 0;
+            $dsc = 0;
+            
+            $vatType = 0; //no need
+            
+            //grand total
+            $mgrand_tot = $_POST["total_value"]; 
+            $mgrand_tot = number_format($mgrand_tot, 2, ".", ""); 
+            
+            //vat value
+            $mtot1 = $_POST["total_vat"]; 
+            $mtot1 = number_format($mtot1, 2, ".", "");
+            
+            //nbt value
+            $nbt = $_POST["total_nbt"]; 
+            $nbt = number_format($nbt, 2, ".", "");
+            
+            //total discount
+            $dsc = $_POST["total_discount"]; 
+            $dsc = number_format($dsc, 2, ".", "");
+            
+            $sql1 = "insert into c_bal(REFNO, SDATE, CUSCODE, AMOUNT, BALANCE, DEP, SAL_EX, Cancell, brand, DEV, trn_type, vatrate, old, flag1, active, totpay, VAT, btt, VAT_VAL, btt_rate) values ('" . $refNo . "', '" . $_POST["invdate"] . "', '" . $_POST["supplier_code"] . "', '" . $mgrand_tot . "', '" . $mgrand_tot . "', '" . $_POST["department"] . "', '" . $_POST["salesrep"] . "', '0', '" . $_POST["brand"] . "', '" . $_SESSION['dev'] . "', 'ARN', '".$row['vatrate']."', '0', 0, 1, 0, '$vatType', $nbt, $mtot1, '".$row['nbt']."')";
+            //echo $sql1;
+           $result1=mysql_query($sql1, $dbinv);
+		   if ($result1==false){ $sql_status=1; }
+
+
+            $sql1 = "insert into s_purmas(REFNO, SDATE, ORDNO, LCNO, pi_no, COUNTRY, SUP_CODE, SUP_NAME, REMARK, DEPARTMENT, AMOUNT, PUR_DATE,
+TYPE, type1, brand, DISC, net_tot, nbt_val, vat_val) values ('" . $refNo . "', '" . $_POST["invdate"] . "', '" . $_POST["orderno1"] . "', '" . $_POST["lc_no"] . "', '" . $_POST["pi_no"] . "', '" . $_POST["country"] . "', '" . $_POST["supplier_code"] . "', '" . $supplier_name . "', '" . $_POST["textarea"] . "', '" . $_POST["department"] . "', '" . $_POST["total_value"] . "', '" . $_POST["dte_dor"] . "', '" . $rowOrd["TYPE"] . "', '" . $rowOrd["type1"] . "', '" . $_POST["brand"] . "', $dsc, '".$_POST["net_value"]."', '".$_POST["total_nbt"]."', '".$_POST["total_vat"]."')";
+            //echo $sql1;
+            $result1=mysql_query($sql1, $dbinv);
+			if ($result1==false){ $sql_status=3; }
+        }
+        
+        
+        //====================== gl_posting======================================
+        
+        $ayear = ac_year($_POST["invdate"]);
+        
+        $ledCode = "";
+        if ($rowOrd["TYPE"] == "LO"){
+            $sqlGlPost = "select SupCntAcc from vendor where CODE = '".$_POST["supplier_code"]."'";
+            $result=mysql_query($sqlGlPost, $dbinv);
+            $rowGlPost = mysql_fetch_array($result);
+            $ledCode = $rowGlPost["SupCntAcc"];
+        }else{
+            $ledCode = "12401005-000";
+        }
+        
+        // add creditor
+        $sqlLedger = "Insert into ledger(l_refno, l_date, l_code, l_amount, l_flag, l_flag1, acyear) Values ('" . $refNo . "', '" . $_POST["invdate"] . "', '" . $ledCode . "', " . $mgrand_tot . ", 'ARN', 'CRE', '$ayear')";
+        $result1=mysql_query($sqlLedger, $dbinv);
+        if ($result1==false){ $sql_status=32; }
+        
+        if($mtot1 > 0){
+        // add VAT
+            $sqlGlPost = "select * from gl_posting where docname = 'ARRIVAL' and action = 'ADD_VAT'";    
+            $result=mysql_query($sqlGlPost, $dbinv);
+            $rowGlPost = mysql_fetch_array($result);
+
+            $sqlLedger = "Insert into ledger(l_refno, l_date, l_code, l_amount, l_flag, l_flag1, acyear) Values ('" . $refNo . "', '" . $_POST["invdate"] . "', '" . $rowGlPost["l_code"] . "', " . $mtot1 . ", 'ARN', '" . $rowGlPost['entry_flag'] . "', '$ayear')";
+            $result1=mysql_query($sqlLedger, $dbinv);
+            if ($result1==false){ $sql_status=33; }
+        }
+        if($nbt > 0){
+        // add NBT
+            $sqlGlPost = "select * from gl_posting where docname = 'ARRIVAL' and action = 'ADD_NBT'";    
+            $result=mysql_query($sqlGlPost, $dbinv);
+            $rowGlPost = mysql_fetch_array($result);
+
+            $sqlLedger = "Insert into ledger(l_refno, l_date, l_code, l_amount, l_flag, l_flag1, acyear) Values ('" . $refNo . "', '" . $_POST["invdate"] . "', '" . $rowGlPost["l_code"] . "', " . $nbt . ", 'ARN', '" . $rowGlPost['entry_flag'] . "', '$ayear')";
+            $result1=mysql_query($sqlLedger, $dbinv);
+            if ($result1==false){ $sql_status=33; }
+        }
+        
+        $i = 1;
+        //echo $_POST["count"];
+        while ($i < $_POST["count"]) {
+
+            $itemcode_name = "itemcode" . $i;
+            $itemname_name = "itemname" . $i;
+            $ord_qty_name = "ord_qty" . $i;
+            $fob_name = "fob" . $i;
+            $qty_name = "qty" . $i;
+            $discount_a_name = "discount_a" . $i;
+            $discount_b_name = "discount_b" . $i;
+            $cost_name = "cost" . $i;
+            
+            $taxNum = "taxNum" . $i;
+            $accno = "accno" . $i;
+            $remarkname = "remarkname" . $i;
+            $invname = "invname" . $i;
+            $invdatename = "invdatename" . $i;
+            
+            $selling_name = "selling" . $i;
+            $margin_name = "margin" + $i;
+            $subtotal_name = "subtotal" . $i;
+
+            $QTYINHAND = 0;
+            $cost = 0;
+            $acc_cost = 0;
+            $acc_cost_c = 0;
+            $m_qty = 0;
+            $m_totval = 0;
+            $COST_mas = 0;
+
+            if ($_POST[$qty_name] > 0) {
+               // if ($_POST["purtype"] == "Local") {
+                    $cost = $_POST[$cost_name];
+               // } else {
+              //      $cost = 0;
+              //  }
+                $acc_cost = $_POST[$cost_name];
+
+
+                $sql = "select * from s_rawmas where STK_NO='" . $_POST[$itemcode_name] . "'";
+				$result=mysql_query($sql, $dbinv);
+                
+                if ($row = mysql_fetch_array($result)) {
+                    $QTYINHAND = $row["QTYINHAND"];
+                    $COST_mas = $row["COST"];
+                    $acc_cost_c = $row["acc_cost"];
+                    $debStockAcc = $row["StockInHandAccoun"];
+                }
+                
+                if ($rowOrd["type1"] != "ST"){
+                    $debStockAcc = $_POST[$accno];
+                }
+
+                $m_qty = $QTYINHAND + $_POST[$qty_name];
+
+                if ($QTYINHAND > 0) {
+                    $m_totval = (($QTYINHAND * $acc_cost_c) + ($_POST[$qty_name] * $_POST[$cost_name])) / $m_qty;
+                } else {
+                    $m_totval = $_POST[$cost_name];
+                }
+
+
+                //echo $itemcode_name;
+                //echo $_POST[$itemcode_name];
+
+                if (trim($_POST[$fob_name]) == "") {
+                    $fob_val = 0;
+                } else {
+                    $fob_val = $_POST[$fob_name];
+                }
+//                $sql4 = "insert into s_purtrn(REFNO, SDATE, STK_NO, DESCRIPT, COST, MARGIN, SELLING, REC_QTY, FOB, DEPARTMENT, QTYINHAND, O_QTY, 
+// Cost_c, acc_cost, acc_cost_c, brand, vatrate, DISCOUNT, DISCOUNT2, ret_qty, cost_seling, cost_margin, CANCEL, soldqty, days) values ('" . $_POST["invno"] . "', '" . $_POST["invdate"] . "', '" . $_POST[$itemcode_name] . "', '" . $_POST[$itemname_name] . "', " . $cost . ", " . $margin_name . ", " . $_POST[$selling_name] . ", " . $_POST[$qty_name] . ", " . $fob_val . ", '" . $_POST["department"] . "', " . $QTYINHAND . ", " . $_POST[$ord_qty_name] . ", " . $COST_mas . ", '" . $acc_cost . "', '" . $acc_cost_c . "', '" . $_POST["brand"] . "', '" . $vatrate . "', ".$_POST[$discount_a_name].", ".$_POST[$discount_b_name].", 0, 0, 0, '0', '', 0)";
+                $sql4 = "insert into s_purtrn(REFNO, SDATE, STK_NO, DESCRIPT, COST, MARGIN, SELLING, REC_QTY, FOB, DEPARTMENT, QTYINHAND, 
+ Cost_c, acc_cost, acc_cost_c, brand, vatrate, DISCOUNT, DISCOUNT2, ret_qty, cost_seling, cost_margin, CANCEL, soldqty, days, taxComb, pur_inv_no, pur_inv_date, sub_tot, O_QTY) values ('" . $refNo . "', '" . $_POST["invdate"] . "', '" . $_POST[$itemcode_name] . "', '" . $_POST[$itemname_name] . "', " . $cost . ", " . $margin_name . ", " . $_POST[$selling_name] . ", " . $_POST[$qty_name] . ", " . $fob_val . ", '" . $_POST["department"] . "', " . $QTYINHAND . ", " . $COST_mas . ", '" . $acc_cost . "', '" . $acc_cost_c . "', '" . $_POST["brand"] . "', '" . $vatrate . "', ".$_POST[$discount_a_name].", ".$_POST[$discount_b_name].", 0, 0, 0, '0', '', 0, ".$_POST[$taxNum].", '".$_POST[$invname]."', '".$_POST[$invdatename]."', '".$_POST[$subtotal_name]."', '".$_POST[$ord_qty_name]."')";
+               // echo $sql1;
+                $result1=mysql_query($sql4, $dbinv);
+                if ($result1==false){ $sql_status=4; }
+
+                $stockValue = $cost*$_POST[$qty_name]-$_POST[$discount_a_name];
+                $stockValue = number_format($stockValue, 2, ".", "");
+                
+                $sqlLedger = "Insert into ledger(l_refno, l_date, l_code, l_amount, l_flag, l_flag1, acyear, L_LMEM) Values ('" . $refNo . "', '" . $_POST["invdate"] . "', '" . $debStockAcc . "', " . $stockValue . ", 'ARN', 'DEB', '$ayear', '" . $_POST[$remarkname] . "')";
+                $result1=mysql_query($sqlLedger, $dbinv);
+                if ($result1==false){ $sql_status=31; }
+
+//              die();
+               
+
+                if ($m_totval > 0) {
+                    $marg = ($_POST[$selling_name] - $m_totval) / $m_totval * 100;
+                } else {
+                    $marg = 0;
+                }
+
+                if (($m_totval > 0) and ( trim($m_totval) != "")) {
+                    $margin = ($_POST[$selling_name] - $m_totval) / $m_totval * 100;
+                } else {
+                    $margin = 0;
+                }
+
+                $sql1 = "update s_rawmas set COST=" . $cost . ", acc_cost=" . $m_totval . ", SELLING='" . $_POST[$selling_name] . "', AR_selling='" . $_POST[$selling_name] . "', MARGIN ='" . $margin . "', QTYINHAND=QTYINHAND+" . $_POST[$qty_name] . " where  STK_NO='" . $_POST[$itemcode_name] . "'";
+				$result1=mysql_query($sql1, $dbinv);
+				if ($result1==false){ $sql_status=5; }
+               
+                //echo $sql1;
+                $sql3 = "select * from s_submas where STK_NO='" . $_POST[$itemcode_name] . "' and STO_CODE='" . $_POST["department"] . "'";
+				$result3=mysql_query($sql3, $dbinv);
+				if ($result3==false){ $sql_status=6; }
+                //echo $sql1;
+               if ($row3 = mysql_fetch_array($result3)) {
+                    $sql1 = "update s_submas set QTYINHAND=QTYINHAND+" . $_POST[$qty_name] . " where STK_NO='" . $_POST[$itemcode_name] . "' and STO_CODE='" . $_POST["department"] . "'";
+                    //	echo $sql1;
+                   	$result1=mysql_query($sql1, $dbinv);
+					if ($result1==false){ $sql_status=7; }
+                } else {
+
+                    $sql1 = "insert into s_submas(STO_CODE, STK_NO, DESCRIPt, OPENT_DATE, QTYINHAND) values ('" . $_POST["department"] . "', '" . $_POST[$itemcode_name] . "', '" . $_POST[$itemname_name] . "', '" . $_POST["invdate"] . "', " . $_POST[$qty_name] . " )";
+                    //echo $sql1;
+					$result1=mysql_query($sql1, $dbinv);
+					if ($result1==false){ $sql_status=8; }
+                   
+                }
+
+                $sql1 = "update s_purmas_tmp set CANCEL='2' where REFNO='" . $_POST["orderno1"] . "'";
+				$result1=mysql_query($sql1, $dbinv);
+				if ($result1==false){ $sql_status=9; }
+               
+
+                $sql1 = "update s_purtrn_tmp set CANCEL='2' where REFNO='" . $_POST["orderno1"] . "'";
+				$result1=mysql_query($sql1, $dbinv);
+				if ($result1==false){ $sql_status=10; }
+               
+
+
+                $sql1 = "insert into s_trn(STK_NO, SDATE, QTY, LEDINDI, REFNO, DEPARTMENT, seri_no, Dev, SAL_EX, ACTIVE, DONO) values ('" . $_POST[$itemcode_name] . "', '" . $_POST["invdate"] . "', '" . $_POST[$qty_name] . "', 'ARN', '" . $refNo . "', '" . $_POST["department"] . "', '', '" . $_SESSION['dev'] . "', '', '1', '')";
+                //echo $sql1;
+				$result1=mysql_query($sql1, $dbinv);
+				if ($result1==false){ $sql_status=11; }
+             
+            }
+
+            $i = $i + 1;
+        }
+
+		if ($sql_status==0){
+//        	$sql1 = "update invpara set ARN=ARN+1 where COMCODE='" . $_SESSION['company'] . "'";
+        	$sql1 = "update invpara set ARN=ARN+1";
+			$result1=mysql_query($sql1, $dbinv);
+       		mysql_query("COMMIT", $dbinv);
+       	 	echo "Saved";
+		} else {
+			mysql_query("ROLLBACK", $dbinv);
+			echo "no $sql_status";
+		}	
+    } else {
+        echo "no";
+    }
+}
+
+
+if ($_GET["Command"] == "pass_arnno") {
+    $ResponseXML = "";
+    $ResponseXML .= "<salesdetails>";
+    $sql = "Select * from s_purmas where REFNO='" . $_GET['arnno'] . "'";
+    $result = $db->RunQuery($sql);
+    if ($row = mysql_fetch_array($result)) {
+        $ResponseXML .= "<REFNO><![CDATA[" . $row["REFNO"] . "]]></REFNO>";
+        $ResponseXML .= "<SDATE><![CDATA[" . $row["SDATE"] . "]]></SDATE>";
+        $ResponseXML .= "<ORDNO><![CDATA[" . $row["ORDNO"] . "]]></ORDNO>";
+        $ResponseXML .= "<LCNO><![CDATA[" . $row["LCNO"] . "]]></LCNO>";
+        $ResponseXML .= "<pi_no><![CDATA[" . $row["pi_no"] . "]]></pi_no>";
+        $ResponseXML .= "<COUNTRY><![CDATA[" . $row["COUNTRY"] . "]]></COUNTRY>";
+        $ResponseXML .= "<SUP_CODE><![CDATA[" . $row["SUP_CODE"] . "]]></SUP_CODE>";
+        $ResponseXML .= "<SUP_NAME><![CDATA[" . $row["SUP_NAME"] . "]]></SUP_NAME>";
+        $ResponseXML .= "<REMARK><![CDATA[" . $row["REMARK"] . "]]></REMARK>";
+        $ResponseXML .= "<DEPARTMENT><![CDATA[" . $row["DEPARTMENT"] . "]]></DEPARTMENT>";
+        $ResponseXML .= "<AMOUNT><![CDATA[" . $row["AMOUNT"] . "]]></AMOUNT>";
+        $ResponseXML .= "<PUR_DATE><![CDATA[" . $row["PUR_DATE"] . "]]></PUR_DATE>";
+        $ResponseXML .= "<brand><![CDATA[" . $row["brand"] . "]]></brand>";
+        $ResponseXML .= "<TYPE><![CDATA[" . $row["TYPE"] . "]]></TYPE>";
+        $ResponseXML .= "<type1><![CDATA[" . $row["type1"] . "]]></type1>";
+        
+        $ResponseXML .= "<DISC><![CDATA[" . $row["DISC"] . "]]></DISC>";
+        $ResponseXML .= "<net_tot><![CDATA[".$row['net_tot']."]]></net_tot>";
+        $ResponseXML .= "<nbt_val><![CDATA[".$row['nbt_val']."]]></nbt_val>";
+        $ResponseXML .= "<vat_val><![CDATA[".$row['vat_val']."]]></vat_val>";
+
+        $ResponseXML .= "<sales_table><![CDATA[ <table><tr>
+                              <td width=\"200\"  background=\"\" ><font color=\"#FFFFFF\">Code</font></td>
+                              <td width=\"800\"  background=\"\"><font color=\"#FFFFFF\">Description</font></td>
+                              <td width=\"300\"  background=\"\"><font color=\"#FFFFFF\">Ord Qty</font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\"></font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Rec Qty</font></td>
+                            <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Discount</font></td>
+                            <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\"></font></td>
+                            <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Cost</font></td>
+                             <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\"></font></td>
+                              <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\"></font></td>
+                                   <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">INV#</font></td>
+                                   <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">INV_DT</font></td>
+                                   <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Tax</font></td>
+                                   <td width=\"200\"  background=\"\"><font color=\"#FFFFFF\">Sub Total</font></td>
+							
+                            </tr>";
+
+        $mcou = 0;
+        $sql = "Select count(*) as mcou from s_purtrn where REFNO='" . $_GET['arnno'] . "'";
+        $result = $db->RunQuery($sql);
+        $row = mysql_fetch_array($result);
+        $mcou = $row["mcou"] + 1;
+
+        $i = 1;
+        $tot = 0;
+        $sql = "Select * from s_purtrn where REFNO='" . $_GET['arnno'] . "'";
+        $result = $db->RunQuery($sql);
+        while ($row = mysql_fetch_array($result)) {
+
+            $itemcode = "itemcode" . $i;
+            $itemname = "itemname" . $i;
+            $ord_qty = "ord_qty" . $i;
+            $fob = "fob" . $i;
+            $qty = "qty" . $i;
+			$discount_a = "discount_a" . $i;
+			$discount_b = "discount_b" . $i;
+            $cost = "cost" . $i;
+            $selling = "selling" . $i;
+            $margin = "margin" . $i;
+            $subtotal = "subtotal" . $i;
+			
+			if (($row['REC_QTY'] > 0) and ( $row['acc_cost'] > 0) ) {
+                $stot = $row['REC_QTY'] * $row['acc_cost'];
+				if ($row['SELLING'] > 0){
+                	$margine_val = ($row['SELLING'] - $row['acc_cost']) / $row['acc_cost'] * 100;
+				} else {
+					$margine_val ="";	
+				}	
+            } else {
+                $stot = "";
+                $margine_val = "";
+            }
+			
+             $option = "";
+             if($row["taxComb"] == "0"){
+                 $option = "NonVat";
+             }else if($row["taxComb"] == "1"){
+                 $option = "Vat";
+             }else if($row["taxComb"] == "2"){
+                 $option = "Svat";
+             }else if($row["taxComb"] == "3"){
+                 $option = "VatNbt";
+             }else if($row["taxComb"] == "4"){
+                 $option = "SvatNbt";
+             }else if($row["taxComb"] == "5"){
+                 $option = "NbtOnly";
+             }
+             
+             $invNo = $row["pur_inv_no"];
+             $invDt = $row["pur_inv_date"];
+
+            $ResponseXML .= "<tr>                              
+                             <td  ><input type=\"text\" size=\"15\" name=" . $itemcode . " id=" . $itemcode . "   value='" . $row['STK_NO'] . "' class=\"text_purchase3\" disabled=\"disabled\"/></td>
+							  <td  ><input type=\"text\" size=\"15\" name=" . $itemname . " id=" . $itemname . "  value='" . $row['DESCRIPT'] . "' class=\"text_purchase3\" disabled=\"disabled\"/></td>
+							  <td  ><input type=\"text\" size=\"15\" name=" . $ord_qty . " id=" . $ord_qty . "  value='" . $row['O_QTY'] . "' class=\"text_purchase3_right\" disabled=\"disabled\"/></td>
+							
+							 <td  ><input type=\"hidden\" size=\"15\" name=" . $fob . " id=" . $fob . " value='" . $row['FOB'] . "'  class=\"text_purchase3\"/></td>
+							 <td  ><input type=\"text\" size=\"15\" name=" . $qty . " id=" . $qty . " value='" . $row['REC_QTY'] . "'  class=\"text_purchase3_right\" onkeyup=\"cal_subtot('" . $i . "', '" . $mcou . "');\"  disabled=\"disabled\"/></td>
+							  <td  ><input type=\"text\" size=\"15\" name=" . $discount_a . " id=" . $discount_a . " value='" . $row['DISCOUNT'] . "'  class=\"text_purchase3_right\" onkeyup=\"cal_disc('" . $i . "', '" . $mcou . "');\" disabled=\"disabled\"/></td>
+							   <td  ><input type=\"hidden\" size=\"15\" name=" . $discount_b . " id=" . $discount_b . " value='" . $row['DISCOUNT2'] . "'  class=\"text_purchase3_right\" onkeyup=\"cal_disc('" . $i . "', '" . $mcou . "');\"/></td>
+							 <td  ><input type=\"text\" size=\"15\" name=" . $cost . " id=" . $cost . " value='" . $row['acc_cost'] . "'  class=\"text_purchase3_right\" onkeyup=\"cal_subtot('" . $i . "', '" . $mcou . "');\"  disabled=\"disabled\"/></td>
+							 <td  ><input type=\"hidden\" size=\"15\" name=" . $selling . " id=" . $selling . " value='" . $row['SELLING'] . "'  class=\"text_purchase3_right\"/></td>
+							 <td  ><input type=\"hidden\" size=\"15\" name=" . $margin . " id=" . $margin . " value='" . $margine_val . "'  class=\"text_purchase3_right\" disabled=\"disabled\"/></td>
+                                                         <td  ><input type=\"text\" size=\"15\" value='" . $invNo . "'  class=\"text_purchase3_right\" disabled=\"disabled\"/></td>
+                                                         <td  ><input type=\"text\" size=\"15\" value='" . $invDt . "'  class=\"text_purchase3_right\" disabled=\"disabled\"/></td>
+                                                         <td  ><input type=\"text\" size=\"15\" value='" . $option . "'  class=\"text_purchase3_right\" disabled=\"disabled\"/></td>
+                                                         <td  ><input type=\"text\" size=\"15\" name=" . $subtotal . " id=" . $subtotal . " value='" . $stot . "'  class=\"text_purchase3_right\" disabled=\"disabled\"/></td>
+							</tr>";
+            //$tot=$tot+($row['COST']*$row['REC_QTY']);
+            $subtot = $subtot + $stot;
+            $i = $i + 1;
+        }
+
+        $ResponseXML .= "</table>]]></sales_table>";
+        $ResponseXML .= "<tot><![CDATA[" . $tot . "]]></tot>";
+        $ResponseXML .= "<subtot><![CDATA[" . number_format($subtot, 2, ".", ",") . "]]></subtot>";
+        $ResponseXML .= "<count><![CDATA[" . $i . "]]></count>";
+    }
+
+
+
+    $ResponseXML .= "</salesdetails>";
+    echo $ResponseXML;
+}
+
+if ($_GET["Command"] == "pass_arnno_gin") {
+    header('Content-Type: text/xml');
+    echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+    $ResponseXML = "";
+    $ResponseXML .= "<salesdetails>";
+    $sql = "Select * from s_purmas where REFNO='" . $_GET['arnno'] . "'";
+    $result = $db->RunQuery($sql);
+    if ($row = mysql_fetch_array($result)) {
+        $ResponseXML .= "<REFNO><![CDATA[" . $row["REFNO"] . "]]></REFNO>";
+        $ResponseXML .= "<SDATE><![CDATA[" . $row["SDATE"] . "]]></SDATE>";
+    }
+    $ResponseXML .= "</salesdetails>";
+    echo $ResponseXML;
+}
+
+
+if ($_GET["Command"] == "cancel_inv") {
+
+    $sql = "select * from s_purmas where CANCEL='0' order by id desc";
+    $result = $db->RunQuery($sql);
+    $row = mysql_fetch_array($result);
+    //echo $sql;
+    //if ($row["REFNO"]!=$_GET["invno"]){
+    //	echo "You Can't cancel this record without cancel last records ";
+    //} else {	
+    $sql1 = "update s_purmas set CANCEL='1' where REFNO='" . $_GET["invno"] . "'";
+    $result1 = $db->RunQuery($sql1);
+
+    $sql1 = "update s_purtrn set CANCEL='1' where REFNO='" . $_GET["invno"] . "'";
+    $result1 = $db->RunQuery($sql1);
+
+    $sql1 = "update s_purmas_tmp set cancel='0' where REFNO='" . $_GET["orderno1"] . "'";
+    $result1 = $db->RunQuery($sql1);
+
+    $sql1 = "update s_purtrn_tmp set CANCEL='0' where REFNO='" . $_GET["orderno1"] . "'";
+    $result1 = $db->RunQuery($sql1);
+
+    $sql1 = "delete from s_trn  where REFNO='" . $_GET["invno"] . "'";
+    $result1 = $db->RunQuery($sql1);
+
+    $sql1 = "delete from s_trn_all  where REFNO='" . $_GET["invno"] . "'";
+    $result1 = $db->RunQuery($sql1);
+
+    $sql1 = "delete from c_bal where REFNO='" . $_GET["invno"] . "'";
+    $result1 = $db->RunQuery($sql1);
+
+    $sql1 = "delete from s_sttr_all where ST_REFNO='" . $_GET["invno"] . "'";
+    $result1 = $db->RunQuery($sql1);
+
+    $sql="DELETE from ledger WHERE l_refno='" . $_GET["invno"] . "'";
+    $result1 = $db->RunQuery($sql1);
+    
+    $sql1 = "select * from s_purtrn where REFNO='" . $_GET["invno"] . "'";
+
+    $result1 = $db->RunQuery($sql1);
+    while ($row1 = mysql_fetch_array($result1)) {
+
+        $sql2 = "update s_rawmas set COST=" . $row1["Cost_c"] . ", acc_cost=" . $row1["acc_cost_c"] . " where STK_NO='" . $row1["STK_NO"] . "'";
+        $result2 = $db->RunQuery($sql2);
+
+        $sql2 = "update s_submas set QTYINHAND=QTYINHAND-" . $row1["REC_QTY"] . " where STK_NO='" . $row1["STK_NO"] . "' and STO_CODE='" . $_GET["department"] . "'";
+
+        $result2 = $db->RunQuery($sql2);
+
+        $sql2 = "update s_rawmas set QTYINHAND=QTYINHAND-" . $row1["REC_QTY"] . " where STK_NO='" . $row1["STK_NO"] . "'";
+        $result2 = $db->RunQuery($sql2);
+    }
+
+    echo "Canceled!";
+    //}
+}
+
+if ($_GET["Command"] == "check_print") {
+
+    echo $_SESSION["print"];
+}
+
+
+if ($_GET["Command"] == "tmp_crelimit") {
+    echo "abc";
+    $crLmt = 0;
+    $cat = "";
+
+    $rep = trim(substr($_GET["Com_rep1"], 0, 5));
+
+    $sql = "select * from br_trn where rep='" . $rep . "' and cus_code='" . trim($_GET["txt_cuscode"]) . "' and brand='" . trim($_GET["cmbbrand1"]) . "'";
+    echo $sql;
+    $result = $db->RunQuery($sql);
+    if ($row = mysql_fetch_array($result)) {
+        $crLmt = $row["credit_lim"];
+        If (is_null($row["CAT"]) == false) {
+            $cat = trim($row["CAT"]);
+        } else {
+            $crLmt = 0;
+        }
+    }
+    /* 	
+      $_SESSION["CURRENT_DOC"] = 66     //document ID
+      //$_SESSION["VIEW_DOC"] = true      //  view current document
+      $_SESSION["FEED_DOC"] = true      //  save  current document
+      //$_SESSION["MOD_DOC"] = true       //   delete   current document
+      //$_SESSION["PRINT_DOC"] = true     // get additional print   of  current document
+      //$_SESSION["PRICE_EDIT"]= true     // edit selling price
+      $_SESSION["CHECK_USER"] = true    // check user permission again
+      $crLmt = $crLmt;
+      setlocale(LC_MONETARY, "en_US");
+      $CrTmpLmt = number_format($_GET["txt_tmeplimit"], 2, ".", ",");
+
+      $REFNO = trim($_GET["txt_cuscode"]) ;
+
+      $AUTH_USER="tmpuser";
+
+      $sql = "insert into tmpCrLmt (sdate, stime, username, tmpLmt, class, rep, cuscode, crLmt, cat) values
+      ('".date("Y-m-d")."','".date("H:i:s", time())."' ,'".$AUTH_USER."',".$CrTmpLmt." ,'".trim($_GET["cmbbrand1"])."','".$rep."','".trim($_GET["txt_cuscode"])."',".$crLmt.",'".$cat"' )";
+      $result =$db->RunQuery($sql);
+
+      $sql = "select * from  br_trn where cus_code='".trim($_GET["txt_cuscode"])."' and rep='".$rep."' and brand='".$_GET["cmbbrand1"]."'";
+      $result =$db->RunQuery($sql);
+      if ($row = mysql_fetch_array($result)) {
+      $sqlbrtrn= "insert into br_trn (cus_code, rep, credit_lim, brand, tmplmt) values ('".trim($_GET["txt_cuscode"])."','".$rep."','0','".trim($_GET["cmbbrand1"])."',".$CrTmpLmt." )";
+      $resultbrtrn =$db->RunQuery($sqlbrtrn);
+
+      } else {
+
+      $sqlbrtrn= "update br_trn set tmplmt= ".$CrTmpLmt."  where cus_code='".trim($_GET["txt_cuscode"])."' and rep='".$rep."' and brand='".$_GET["cmbbrand1"]."' ";
+      $resultbrtrn =$db->RunQuery($sqlbrtrn);
+
+      //	$sqlbrtrn= "update vendor set temp_limit= ".$CrTmpLmt."  where code='".trim($_GET["txt_cuscode"])."' "
+      }
+
+      If ($_GET["Check1"] == 1) {
+      $sqlblack= "update vendor set blacklist= '1'  where code='".trim($_GET["txt_cuscode"])."' ";
+      $resultblack =$db->RunQuery($sqlblack);
+      } else {
+      $sqlblack= "update vendor set blacklist= '0'  where code='".trim($_GET["txt_cuscode"])."' ";
+      $resultblack =$db->RunQuery($sqlblack);
+      }
+
+      echo "Tempory limit updated"; */
+}
+?>
